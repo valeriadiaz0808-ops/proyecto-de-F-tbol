@@ -1,5 +1,5 @@
 """Controllers: reciben las acciones del usuario y llaman a models/services."""
-import os, re, json, uuid, urllib.request, urllib.parse
+import os, re, json, uuid, hashlib, hmac, secrets, urllib.request, urllib.parse
 from xml.sax.saxutils import escape
 import models as M
 from services import posiciones as pos, sanciones as san
@@ -14,23 +14,55 @@ def _int(v):
     try: return int(v)
     except (TypeError, ValueError): return 0
 
-def login(b):  # RN10 + no se guardan contraseñas
-    if CLIENT_ID and b.get('credential'):
+def _hash(p):
+    sal = secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac('sha256', p.encode(), bytes.fromhex(sal), 200_000).hex()
+    return f'{sal}${h}'
+
+def _verificar(p, guardado):
+    try: sal, h = guardado.split('$')
+    except (ValueError, AttributeError): return False
+    nuevo = hashlib.pbkdf2_hmac('sha256', p.encode(), bytes.fromhex(sal), 200_000).hex()
+    return hmac.compare_digest(nuevo, h)
+
+def _limpio(u): return {k: v for k, v in u.items() if k != 'password_hash'}
+
+def login(b):
+    if b.get('credential'):  # Google
+        if not CLIENT_ID: raise Error('El acceso con Google no está configurado')
         try:
             with urllib.request.urlopen('https://oauth2.googleapis.com/tokeninfo?id_token=' + urllib.parse.quote(b['credential'])) as r: t = json.load(r)
         except Exception: raise Error('Token de Google inválido', 401)
-        if t.get('aud') != CLIENT_ID: raise Error('Token de Google inválido', 401)
-        correo, nombre = t['email'], t.get('name') or t['email']
-    elif not CLIENT_ID:  # modo demostración
-        correo = (b.get('correo') or '').strip(); nombre = b.get('nombre') or correo.split('@')[0]
-    else: raise Error('Falta credencial')
-    correo = correo.lower()
-    if not correo.endswith('@' + DOMINIO): raise Error(f'Solo se permiten cuentas @{DOMINIO}', 403)
-    u = M.usuarios.por_correo(correo)
-    if not u: u = M.usuarios.crear(correo, nombre, 'comision' if correo in ADMINS else 'estudiante')
-    elif correo in ADMINS and u['rol'] != 'comision': M.usuarios.a_comision(u['id']); u['rol'] = 'comision'
+        if t.get('aud') != CLIENT_ID or t.get('email_verified') not in (True, 'true'): raise Error('Token de Google inválido', 401)
+        correo, nombre = t['email'].lower(), t.get('name') or t['email']
+        if not re.fullmatch(r'[^@\s]+@' + re.escape(DOMINIO), correo): raise Error(f'Solo se permiten cuentas @{DOMINIO}', 403)
+        u = M.usuarios.por_correo(correo)
+        if not u: u = M.usuarios.crear(correo, nombre, 'comision' if correo in ADMINS else 'estudiante')
+        elif correo in ADMINS and u['rol'] != 'comision': M.usuarios.a_comision(u['id']); u['rol'] = 'comision'
+    else:  # correo + contraseña
+        correo = (b.get('correo') or '').strip().lower()
+        u = M.usuarios.por_correo(correo)
+        if not u or not _verificar(b.get('password') or '', u.get('password_hash')): raise Error('Correo o contraseña incorrectos', 401)
     token = str(uuid.uuid4()); SESIONES[token] = u['id']
-    return dict(token=token, user=u)
+    return dict(token=token, user=_limpio(u))
+
+def registro(b):
+    correo = (b.get('correo') or '').strip().lower(); nombre = (b.get('nombre') or '').strip(); pw = b.get('password') or ''
+    if not re.fullmatch(r'[^@\s]+@' + re.escape(DOMINIO), correo): raise Error(f'Solo se permiten cuentas @{DOMINIO}', 403)
+    if correo in ADMINS: raise Error('Esa cuenta es de administrador, solo inicia sesión', 403)
+    if not nombre: raise Error('Escribe tu nombre')
+    if len(pw) < 8: raise Error('La contraseña debe tener al menos 8 caracteres')
+    if M.usuarios.por_correo(correo): raise Error('Ese correo ya está registrado')
+    M.usuarios.crear(correo, nombre, 'estudiante', _hash(pw))
+    return login(dict(correo=correo, password=pw))
+
+def asegurar_admin():  # crea (o completa) la cuenta del administrador al iniciar
+    correo = ADMINS[0]; pw = os.environ.get('ADMIN_PASSWORD', 'mimi2022')
+    u = M.usuarios.por_correo(correo)
+    if not u: M.usuarios.crear(correo, 'Administrador', 'comision', _hash(pw))
+    else:
+        if u['rol'] != 'comision': M.usuarios.a_comision(u['id'])
+        if not u.get('password_hash'): M.usuarios.poner_password(u['id'], _hash(pw))
 
 def tid(q):
     if _int(q.get('torneo_id')): return _int(q['torneo_id'])
@@ -95,12 +127,20 @@ def editar_torneo(c): validar_torneo({'anio': 1, **c['body']}); M.torneos.actual
 def nuevo_grupo(c):
     if not c['body'].get('nombre'): raise Error('Falta el nombre')
     return dict(id=M.grupos.crear(c['body']))
+def editar_grupo(c):
+    if not c['body'].get('nombre'): raise Error('Falta el nombre')
+    M.grupos.actualizar(c['params']['id'], {'nombre': c['body']['nombre']})
+    return {}
+def stats_jugador(c):
+    r = M.stats.jugador(c['params']['id'])
+    if not r: raise Error('Jugador no existe', 404)
+    return r
 def ok(fn): return lambda c: (fn(c), {})[1]
 
 # (método, ruta, solo_admin, handler)
 RUTAS = [
     ('GET', '/api/config', 0, lambda c: dict(googleClientId=CLIENT_ID, dominio=DOMINIO)),
-    ('GET', '/api/me', 0, lambda c: c['user']),
+    ('GET', '/api/me', 0, lambda c: _limpio(c['user'])),
     ('GET', '/api/dashboard', 0, dashboard),
     ('GET', '/api/torneos', 0, lambda c: M.torneos.listar()),
     ('POST', '/api/torneos', 1, nuevo_torneo),
@@ -108,6 +148,7 @@ RUTAS = [
     ('DELETE', '/api/torneos/:id', 1, ok(lambda c: M.torneos.borrar(c['params']['id']))),
     ('GET', '/api/grupos', 0, lambda c: M.grupos.listar(tid(c['query']))),
     ('POST', '/api/grupos', 1, nuevo_grupo),
+    ('PUT', '/api/grupos/:id', 1, ok(lambda c: M.grupos.actualizar(c['params']['id'], c['body']))),
     ('DELETE', '/api/grupos/:id', 1, ok(lambda c: M.grupos.borrar(c['params']['id']))),
     ('GET', '/api/equipos', 0, lambda c: M.equipos.listar(tid(c['query']))),
     ('POST', '/api/equipos', 1, nuevo_equipo),
@@ -115,6 +156,7 @@ RUTAS = [
     ('DELETE', '/api/equipos/:id', 1, ok(lambda c: M.equipos.borrar(c['params']['id']))),
     ('GET', '/api/jugadores', 0, lambda c: M.jugadores.listar(_int(c['query'].get('equipo_id')))),
     ('POST', '/api/jugadores', 1, nuevo_jugador),
+    ('GET', '/api/jugadores/:id/estadisticas', 0, stats_jugador),
     ('PUT', '/api/jugadores/:id', 1, ok(lambda c: M.jugadores.actualizar(c['params']['id'], c['body']))),
     ('DELETE', '/api/jugadores/:id', 1, ok(lambda c: M.jugadores.borrar(c['params']['id']))),
     ('GET', '/api/partidos', 0, lambda c: M.partidos.listar(tid(c['query']))),
@@ -136,6 +178,7 @@ def manejar(metodo, ruta, query, body, auth):
     """Devuelve (código, resultado). resultado = dict/list (JSON) o dict con 'raw' (archivo)."""
     try:
         if metodo == 'POST' and ruta == '/api/login': return 200, login(body)
+        if metodo == 'POST' and ruta == '/api/registro': return 200, registro(body)
         for m, rx, admin, h in _R:
             mt = rx.match(ruta)
             if m == metodo and mt:
@@ -149,4 +192,6 @@ def manejar(metodo, ruta, query, body, auth):
         return 404, {'error': 'No encontrado'}
     except Error as e: return e.code, {'error': str(e)}
     except Exception as e:
-        return (400, {'error': 'Dato duplicado'}) if 'UNIQUE' in str(e) else (500, {'error': str(e)})
+        return (400, {'error': 'Dato duplicado'}) if 'Duplicate' in str(e) else (500, {'error': str(e)})
+
+asegurar_admin()
