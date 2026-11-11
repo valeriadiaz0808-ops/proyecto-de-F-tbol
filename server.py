@@ -7,7 +7,7 @@ from controllers import api
 
 VIEWS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'views')
 MIME = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml'}
-seed.cargar()
+# seed.cargar()
 
 class Handler(BaseHTTPRequestHandler):
     def _api(self, u):
