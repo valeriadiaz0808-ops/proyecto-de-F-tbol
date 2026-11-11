@@ -19,10 +19,9 @@ class Crud:
 
 class Usuarios:
     def por_correo(self, c): return uno('SELECT * FROM usuarios WHERE correo=?', (c,))
-    def crear(self, correo, nombre, rol, password_hash=None):
-        run('INSERT INTO usuarios(correo,nombre,rol,password_hash) VALUES(?,?,?,?)', (correo, nombre, rol, password_hash)); return self.por_correo(correo)
+    def crear(self, correo, nombre, rol):
+        run('INSERT INTO usuarios(correo,nombre,rol) VALUES(?,?,?)', (correo, nombre, rol)); return self.por_correo(correo)
     def a_comision(self, id): run("UPDATE usuarios SET rol='comision' WHERE id=?", (id,))
-    def poner_password(self, id, h): run('UPDATE usuarios SET password_hash=? WHERE id=?', (h, id))
 
 class Torneos(Crud):
     def listar(self): return todos('SELECT * FROM torneos ORDER BY anio DESC,id DESC')
@@ -32,7 +31,6 @@ class Equipos(Crud):
     def listar(self, t): return todos("""SELECT e.*,g.nombre grupo,(SELECT COUNT(*) FROM jugadores j WHERE j.equipo_id=e.id) n_jugadores,
       (SELECT COUNT(*) FROM partidos p WHERE p.estado='jugado' AND ((p.equipo_local_id=e.id AND p.goles_local>p.goles_visitante) OR (p.equipo_visitante_id=e.id AND p.goles_visitante>p.goles_local))) victorias
       FROM equipos e JOIN grupos g ON g.id=e.grupo_id WHERE g.torneo_id=? ORDER BY g.nombre,e.nombre""", (t,))
-
 class Jugadores(Crud):
     def listar(self, e): return todos('SELECT j.*,EXISTS(SELECT 1 FROM sanciones s WHERE s.jugador_id=j.id AND s.activa=1) suspendido FROM jugadores j WHERE equipo_id=? ORDER BY apellido', (e,))
     def por_carnet(self, c): return uno('SELECT id FROM jugadores WHERE carnet=?', (c,))
@@ -53,12 +51,5 @@ class Stats:
       JOIN equipos e ON e.id=j.equipo_id JOIN grupos g ON g.id=e.grupo_id WHERE g.torneo_id=? GROUP BY j.id HAVING goles>0 ORDER BY goles DESC LIMIT 20""", (t,))
     def amonestados(self, t): return todos("""SELECT j.nombre||' '||j.apellido jugador,e.nombre equipo,SUM(s.amarillas) amarillas,SUM(s.rojas) rojas FROM estadisticas_partido s JOIN jugadores j ON j.id=s.jugador_id
       JOIN equipos e ON e.id=j.equipo_id JOIN grupos g ON g.id=e.grupo_id WHERE g.torneo_id=? GROUP BY j.id HAVING amarillas+rojas>0 ORDER BY rojas DESC,amarillas DESC LIMIT 20""", (t,))
-    def jugador(self, id): return uno("""SELECT j.id jugador_id,j.nombre,j.apellido,j.carnet,e.nombre equipo,
-        COALESCE(SUM(s.goles),0) goles,COALESCE(SUM(s.asistencias),0) asistencias,COALESCE(SUM(s.autogoles),0) autogoles,
-        COALESCE(SUM(s.amarillas),0) amarillas,COALESCE(SUM(s.rojas),0) rojas,COALESCE(SUM(s.faltas_cometidas),0) faltas_cometidas,
-        COALESCE(SUM(s.faltas_recibidas),0) faltas_recibidas,COALESCE(SUM(s.tiros),0) tiros,COALESCE(SUM(s.tiros_arco),0) tiros_arco,
-        COALESCE(SUM(s.pases_intentados),0) pases_intentados,COALESCE(SUM(s.atajadas),0) atajadas,COUNT(s.id) partidos
-        FROM jugadores j JOIN equipos e ON e.id=j.equipo_id LEFT JOIN estadisticas_partido s ON s.jugador_id=j.id
-        WHERE j.id=? GROUP BY j.id,e.nombre""", (id,))
 
 usuarios, torneos, grupos, equipos, jugadores, partidos, sanciones, stats = Usuarios(), Torneos('torneos'), Grupos('grupos'), Equipos('equipos'), Jugadores('jugadores'), Partidos('partidos'), Sanciones(), Stats()

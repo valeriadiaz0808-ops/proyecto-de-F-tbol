@@ -37,7 +37,7 @@ def guardar(pid, stats):
             jid = s.get('jugador_id'); lado = 'L' if jid in L else 'V' if jid in V else None
             if not lado or jid in susp: continue
             v = [_int(s.get(f)) for f in F]
-            M.run(f"REPLACE INTO estadisticas_partido(partido_id,jugador_id,{','.join(F)}) VALUES(?,?,{','.join('?' * len(F))})", (pid, jid, *v))
+            M.run(f"INSERT OR REPLACE INTO estadisticas_partido(partido_id,jugador_id,{','.join(F)}) VALUES(?,?,{','.join('?' * len(F))})", (pid, jid, *v))
             g, ag, ro = v[0], v[2], v[4]
             if lado == 'L': gl += g; gv += ag
             else: gv += g; gl += ag
