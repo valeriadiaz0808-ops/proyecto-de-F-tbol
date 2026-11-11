@@ -1,0 +1,7 @@
+$env:DB_HOST="127.0.0.1"
+$env:DB_PORT="3307"
+$env:DB_USER="root"
+$env:DB_PASSWORD=""
+$env:DB_NAME="futsal"
+$env:GOOGLE_CLIENT_ID="351210907227-bve9m17lj709aa48jnsn88bkp3g4n8hb.apps.googleusercontent.com"
+$env:ADMIN_EMAILS="10145132@clases.edu.sv"
