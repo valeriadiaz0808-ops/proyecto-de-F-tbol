@@ -28,7 +28,8 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         if u.path.startswith('/api/'): return self._api(u)
         f = os.path.normpath(os.path.join(VIEWS, 'index.html' if u.path == '/' else u.path.lstrip('/')))
-        if not f.startswith(VIEWS) or not os.path.isfile(f): self.send_error(404); return
+        if not f.startswith(VIEWS) or not os.path.isfile(f):
+            self.send_response(302); self.send_header('Location', '/'); self.send_header('Content-Length', '0'); self.end_headers(); return
         data = open(f, 'rb').read(); self.send_response(200)
         self.send_header('Content-Type', MIME.get(os.path.splitext(f)[1], 'application/octet-stream')); self.send_header('Content-Length', str(len(data))); self.end_headers(); self.wfile.write(data)
     do_GET = do_POST = do_PUT = do_DELETE = _handle

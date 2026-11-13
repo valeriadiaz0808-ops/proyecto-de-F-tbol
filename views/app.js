@@ -55,13 +55,7 @@ async function loginView(app) {
   S.cfg = await fetch('/api/config').then(r => r.json());
   const reg = S.modoReg;
   app.innerHTML = `<div class="login"><div class="logo">${ico('trophy', 38)}</div><div class="eyebrow">Instituto Nacional profesor Francisco Ventura Zelaya</div><h1>Infravenz<br><span style="color:var(--g)">Fútbol</span></h1><p class="sub" style="margin:14px 0 30px">Torneo académico de Fútsal. Consulta partidos, resultados y posiciones.</p>
-    ${reg ? '<input id="nombre" type="text" placeholder="Tu nombre completo" style="margin-bottom:10px">' : ''}
-    <input id="correo" type="email" placeholder="tucorreo@clases.edu.sv" style="margin-bottom:10px">
-    <input id="clave" type="password" placeholder="Contraseña${reg ? ' (mínimo 8 caracteres)' : ''}">
-    <button class="btn w" data-act="${reg ? 'registrar' : 'login'}" style="margin-top:12px">${reg ? 'Crear cuenta' : 'Iniciar sesión'}</button>
-    <button class="chip" data-act="cambiarModo" style="margin-top:12px">${reg ? 'Ya tengo cuenta' : 'Crear cuenta nueva'}</button>
-    ${S.cfg.googleClientId ? '<div class="sub" style="margin:18px 0 10px">o</div><div id="gbtn" style="display:flex;justify-content:center"></div>' : ''}
-  <p class="sub" style="margin-top:40px;font-size:11px">Acceso restringido a personal y estudiantes de INFRAVENZ</p></div>`;
+    ${S.cfg.googleClientId ? '<div id="gbtn" style="display:flex;justify-content:center"></div>' : ''}  <p class="sub" style="margin-top:40px;font-size:11px">Acceso restringido a personal y estudiantes de INFRAVENZ</p></div>`;
   if (S.cfg.googleClientId) { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.onload = () => { google.accounts.id.initialize({ client_id: S.cfg.googleClientId, callback: r => entrar({ credential: r.credential }) }); google.accounts.id.renderButton($('#gbtn'), { theme: 'filled_black', size: 'large', text: 'signin_with', width: 320 }); }; document.head.append(s); }
 }
 const G = () => '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.100 0 24s.9 7.600 2.600 10.800z"/><path fill="#34A853" d="M24 48c6.500 0 11.900-2.100 15.900-5.800l-7.700-6c-2.100 1.400-4.900 2.300-8.200 2.300-6.300 0-11.600-4.100-13.500-9.800l-7.900 6.100C6.500 42.600 14.600 48 24 48z"/></svg>';
