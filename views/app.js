@@ -2,7 +2,7 @@
 const S = { token: localStorage.getItem('tk'), user: null, tab: 'inicio', torneo: null, torneos: [], grupos: [], grupoF: 'todos', q: '', abierto: null, jug: [], jornada: null, posG: null, sub: 'sanciones', pl: null, cfg: {} };
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 const isAdmin = () => S.user?.rol === 'comision';
-const IC = { home: 'M3 11l9-8 9 8M5 10v10h14V10', trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3', cal: 'M4 5h16v15H4zM4 10h16M9 3v4M15 3v4', table: 'M4 4h16v16H4zM4 10h16M4 15h16M10 4v16', file: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6', bell: 'M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4', alert: 'M12 3L2 20h20zM12 10v5M12 17.5v.5', plus: 'M12 5v14M5 12h14', dl: 'M12 4v12M7 11l5 5 5-5M5 20h14', pin: 'M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11zM12 12a2 2 0 100-4 2 2 0 000 4', clock: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2', chev: 'M9 6l6 6-6 6', down: 'M6 9l6 6 6-6', search: 'M11 18a7 7 0 100-14 7 7 0 000 14zM21 21l-5-5', back: 'M15 6l-6 6 6 6', edit: 'M4 20h4L19 9l-4-4L4 16zM13 7l4 4', trash: 'M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13', out: 'M10 4H4v16h6M15 8l4 4-4 4M19 12H9' };
+const IC = { home: 'M3 11l9-8 9 8M5 10v10h14V10', trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3', cal: 'M4 5h16v15H4zM4 10h16M9 3v4M15 3v4', table: 'M4 4h16v16H4zM4 10h16M4 15h16M10 4v16', file: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6', bell: 'M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4', alert: 'M12 3L2 20h20zM12 10v5M12 17.5v.5', plus: 'M12 5v14M5 12h14', dl: 'M12 4v12M7 11l5 5 5-5M5 20h14', pin: 'M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11zM12 12a2 2 0 100-4 2 2 0 000 4', clock: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2', chev: 'M9 6l6 6-6 6', down: 'M6 9l6 6 6-6', search: 'M11 18a7 7 0 100-14 7 7 0 000 14zM21 21l-5-5', back: 'M15 6l-6 6 6 6', edit: 'M4 20h4L19 9l-4-4L4 16zM13 7l4 4', trash: 'M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13', out: 'M10 4H4v16h6M15 8l4 4-4 4M19 12H9',users: 'M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8' };
 const ico = (n, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${IC[n]}"/></svg>`;
 const COL = ['#4a9eff', '#ff9f1a', '#00d26a', '#a78bfa', '#ff4d5e', '#22d3ee', '#fb923c', '#f472b6'];
 const sig = n => { const w = n.replace(/[^\p{L} ]/gu, '').split(' ').filter(Boolean); return (w.length > 1 ? w.map(x => x[0]).join('') : w[0]).slice(0, 3).toUpperCase(); };
@@ -10,6 +10,7 @@ const col = n => COL[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % COL.lengt
 const shield = (n, logo, sz = 46) => logo ? `<img src="${esc(logo)}" width="${sz}" height="${sz}" style="object-fit:contain">` : `<svg class="shield" style="width:${sz}px;height:${sz * 1.08}px" viewBox="0 0 46 50"><path d="M23 2l19 6v16c0 12-8 19-19 24C12 43 4 36 4 24V8z" fill="${col(n)}22" stroke="${col(n)}" stroke-width="2"/><text x="23" y="30" text-anchor="middle" font-family="Barlow Condensed,Impact" font-weight="800" font-size="13" fill="${col(n)}">${sig(n)}</text></svg>`;
 const fmtF = (f, h) => { if (!f) return ''; const d = new Date(f + 'T12:00'), hoy = new Date().toISOString().slice(0, 10); const t = f === hoy ? 'HOY' : d.toLocaleDateString('es', { weekday: 'short' }).replace('.', '').toUpperCase(); return `${t} · ${d.getDate()} ${d.toLocaleDateString('es', { month: 'short' }).replace('.', '').toUpperCase()}${h ? ' · ' + h : ''}`; };
 const hoy = () => new Date().toISOString().slice(0, 10);
+const ROLES_UI = [['comision', 'Comisión'], ['docente', 'Docente'], ['estudiante', 'Estudiante']];
 
 async function api(p, m = 'GET', b) {
   const r = await fetch('/api' + p, { method: m, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + S.token }, body: b ? JSON.stringify(b) : undefined });
@@ -36,7 +37,7 @@ function logout() { localStorage.removeItem('tk'); S.token = null; S.user = null
 function shell(inner, fab = '') {
   const u = S.user, rol = u.rol === 'comision' ? 'Administrador · Comité Deportivo' : u.rol === 'docente' ? 'Docente' : 'Estudiante';
   const ini = u.nombre.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
-  const N = [['inicio', 'home', 'Inicio'], ['torneos', 'trophy', 'Torneos'], ['partidos', 'cal', 'Partidos'], ['posiciones', 'table', 'Posiciones'], ['informes', 'file', 'Informes']];
+  const N = [['inicio', 'home', 'Inicio'], ['torneos', 'trophy', 'Torneos'], ['partidos', 'cal', 'Partidos'], ['posiciones', 'table', 'Posiciones'], ['informes', 'file', 'Informes'], ...(isAdmin() ? [['comision', 'users', 'Comisión']] : [])];
   return `<header><div class="av" style="width:34px;height:34px;background:var(--gd);color:var(--g)">${ico('trophy', 16)}</div><div class="brand">Infravenz<b>Fútbol</b><small>TORNEO ACADÉMICO ${S.torneo?.anio || ''}</small></div>
   <button class="ib" data-act="bell">${ico('bell')}${S.alertas ? '<i></i>' : ''}</button><div class="me">${esc(u.nombre.split(' ').slice(0, 2).join(' '))}<br><span class="badge">● ${rol}</span></div><div class="av" data-act="logout" title="Cerrar sesión">${ini}</div></header>
   <main>${inner}</main>${fab}<nav>${N.map(([k, i, l]) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-v="${k}">${ico(i, 20)}${l}</button>`).join('')}</nav>`;
@@ -131,6 +132,14 @@ const VIEWS = {
     <div class="tabs">${[['sanciones', 'Sanciones'], ['goleadores', 'Máximos Goleadores'], ['amonestados', 'Amonestados']].map(([k, l]) => `<button class="${S.sub === k ? 'on' : ''}" data-act="sub" data-v="${k}">${l}</button>`).join('')}</div>${body}`);
   },
 
+// ---------- Pantalla:  gestion comicion ----------
+  async comision() {
+  const us = await api('/usuarios'); S.us = us;
+  const R = { comision: ['Comisión', 'p-g'], docente: ['Docente', 'p-b'], estudiante: ['Estudiante', 'p-o'] };
+  return shell(`<div class="row"><div class="sp"><h1 style="font-size:30px">Usuarios</h1><div class="sub" style="margin:2px 0 0">${us.length} cuentas · ${us.filter(u => u.rol === 'comision').length} en la comisión</div></div><button class="btn sm" data-act="nuevoUsuario">${ico('plus', 16)} Agregar</button></div>
+  <div class="card" style="margin-top:14px">${us.map(u => `<div class="pl"><div class="th">${esc(u.nombre.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase())}</div><div class="sp"><b>${esc(u.nombre)}</b><br><small style="color:var(--mut)">${esc(u.correo)}</small></div><span class="pill ${(R[u.rol] || R.estudiante)[1]}">${(R[u.rol] || R.estudiante)[0]}</span><button data-act="editUsuario" data-v="${u.id}">${ico('edit', 16)}</button></div>`).join('')}</div>`);
+},
+
   // ---------- Pantalla 5: Planilla digital ----------
   async planilla() {
     const pl = S.pl, p = pl.partido, ro = p.estado === 'jugado' || !isAdmin(); const tot = (a, b) => a.reduce((s, j) => s + j.goles, 0) + b.reduce((s, j) => s + j.autogoles, 0);
@@ -147,6 +156,8 @@ const VIEWS = {
 // ---------- Acciones (botones) ----------
 const optG = () => S.grupos.map(g => [g.id, g.nombre]);
 const ACT = {
+  nuevoUsuario: () => modal('Agregar usuario', [{ n: 'nombre', l: 'Nombre completo' }, { n: 'correo', l: 'Correo (@clases.edu.sv)', t: 'email' }, { n: 'rol', l: 'Rol', t: 'select', v: 'comision', o: ROLES_UI }], async v => { await api('/usuarios', 'POST', v); render(); }),
+  editUsuario: v => { const u = S.us.find(x => x.id == v); modal('Editar usuario', [{ n: 'nombre', l: 'Nombre', v: u.nombre }, { n: 'rol', l: 'Rol', t: 'select', v: u.rol, o: ROLES_UI }], async b => { await api('/usuarios/' + v, 'PUT', b); if (u.id == S.user.id) { S.user = null; S.tab = 'inicio'; } render(); }); },
   tab: v => { S.tab = v; render(); }, logout: () => confirm('¿Cerrar sesión?') && logout(), bell: () => toast(S.alertas ? S.alertas + ' sanciones activas' : 'Sin notificaciones'),
   login: () => entrar({ correo: $('#correo').value, password: $('#clave').value }),
   registrar: () => entrar({ nombre: $('#nombre').value, correo: $('#correo').value, password: $('#clave').value }, '/api/registro'),

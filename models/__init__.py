@@ -23,6 +23,10 @@ class Usuarios:
         run('INSERT INTO usuarios(correo,nombre,rol,password_hash) VALUES(?,?,?,?)', (correo, nombre, rol, password_hash)); return self.por_correo(correo)
     def a_comision(self, id): run("UPDATE usuarios SET rol='comision' WHERE id=?", (id,))
     def poner_password(self, id, h): run('UPDATE usuarios SET password_hash=? WHERE id=?', (h, id))
+    def listar(self): return todos('SELECT id,correo,nombre,rol FROM usuarios ORDER BY rol,nombre')
+    def por_id(self, id): return uno('SELECT id,correo,nombre,rol FROM usuarios WHERE id=?', (id,))
+    def cambiar_rol(self, id, rol): run('UPDATE usuarios SET rol=? WHERE id=?', (rol, id))
+    def cambiar_nombre(self, id, nombre): run('UPDATE usuarios SET nombre=? WHERE id=?', (nombre, id))
 
 class Torneos(Crud):
     def listar(self): return todos('SELECT * FROM torneos ORDER BY anio DESC,id DESC')

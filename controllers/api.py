@@ -5,6 +5,7 @@ import models as M
 from services import posiciones as pos, sanciones as san
 from services.sanciones import Error
 
+ROLES = ('comision', 'estudiante', 'docente')
 DOMINIO = 'clases.edu.sv'
 CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 ADMINS = [s.strip().lower() for s in os.environ.get('ADMIN_EMAILS', 'admin@clases.edu.sv').split(',')]
@@ -37,14 +38,36 @@ def login(b):
         correo, nombre = t['email'].lower(), t.get('name') or t['email']
         if not re.fullmatch(r'[^@\s]+@' + re.escape(DOMINIO), correo): raise Error(f'Solo se permiten cuentas @{DOMINIO}', 403)
         u = M.usuarios.por_correo(correo)
-        if not u: u = M.usuarios.crear(correo, nombre, 'comision' if correo in ADMINS else 'estudiante')
-        elif correo in ADMINS and u['rol'] != 'comision': M.usuarios.a_comision(u['id']); u['rol'] = 'comision'
+        if not u:
+            u = M.usuarios.crear(correo, nombre, 'comision' if correo in ADMINS else 'estudiante')
+        else:
+            if correo in ADMINS and u['rol'] != 'comision':
+                M.usuarios.a_comision(u['id']); u['rol'] = 'comision'
+            if u['nombre'] != nombre:
+                M.usuarios.cambiar_nombre(u['id'], nombre); u['nombre'] = nombre
     else:  # correo + contraseña
         correo = (b.get('correo') or '').strip().lower()
         u = M.usuarios.por_correo(correo)
         if not u or not _verificar(b.get('password') or '', u.get('password_hash')): raise Error('Correo o contraseña incorrectos', 401)
     token = str(uuid.uuid4()); SESIONES[token] = u['id']
     return dict(token=token, user=_limpio(u))
+
+def nuevo_usuario(c):
+    b = c['body']
+    correo = (b.get('correo') or '').strip().lower()
+    if not re.fullmatch(r'[^@\s]+@' + re.escape(DOMINIO), correo): raise Error(f'El correo debe ser @{DOMINIO}')
+    if b.get('rol') not in ROLES: raise Error('Rol no válido')
+    if M.usuarios.por_correo(correo): raise Error('Ese correo ya está registrado')
+    nombre = (b.get('nombre') or '').strip() or correo.split('@')[0]
+    u = M.usuarios.crear(correo, nombre, b['rol'])
+    return dict(id=u['id'])
+
+def editar_usuario(c):
+    uid = int(c['params']['id'])
+    if c['body'].get('rol') not in ROLES: raise Error('Rol no válido')
+    if uid == c['user']['id']: raise Error('No puedes cambiar tu propio rol')
+    if not M.usuarios.por_id(uid): raise Error('No existe', 404)
+    M.usuarios.cambiar_rol(uid, c['body']['rol']); return {}
 
 def registro(b):
     correo = (b.get('correo') or '').strip().lower(); nombre = (b.get('nombre') or '').strip(); pw = b.get('password') or ''
@@ -141,6 +164,9 @@ def ok(fn): return lambda c: (fn(c), {})[1]
 RUTAS = [
     ('GET', '/api/config', 0, lambda c: dict(googleClientId=CLIENT_ID, dominio=DOMINIO)),
     ('GET', '/api/me', 0, lambda c: _limpio(c['user'])),
+    ('GET',  '/api/usuarios',     1, lambda c: M.usuarios.listar()),
+    ('POST', '/api/usuarios',     1, nuevo_usuario),
+    ('PUT',  '/api/usuarios/:id', 1, editar_usuario),
     ('GET', '/api/dashboard', 0, dashboard),
     ('GET', '/api/torneos', 0, lambda c: M.torneos.listar()),
     ('POST', '/api/torneos', 1, nuevo_torneo),
