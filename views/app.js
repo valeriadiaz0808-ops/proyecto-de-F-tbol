@@ -1,5 +1,5 @@
 // Views + lógica de pantallas (cliente). Habla con /api/* (controllers)
-const S = { token: localStorage.getItem('tk'), user: null, tab: 'inicio', torneo: null, torneos: [], grupos: [], grupoF: 'todos', q: '', abierto: null, jug: [], jornada: null, posG: null, sub: 'sanciones', pl: null, cfg: {} };
+const S = { token: localStorage.getItem('tk'), user: null, tab: 'inicio', torneo: null, torneos: [], grupos: [], grupoF: 'todos', q: '', abierto: null, jug: [], jornada: null, posG: null, sub: 'sanciones', pl: null, cfg: {}, qu: '', rolF: 'todos'};
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 const isAdmin = () => S.user?.rol === 'comision';
 const IC = { home: 'M3 11l9-8 9 8M5 10v10h14V10', trophy: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0zM17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3', cal: 'M4 5h16v15H4zM4 10h16M9 3v4M15 3v4', table: 'M4 4h16v16H4zM4 10h16M4 15h16M10 4v16', file: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6', bell: 'M6 16V11a6 6 0 0112 0v5l2 2H4zM10 21h4', alert: 'M12 3L2 20h20zM12 10v5M12 17.5v.5', plus: 'M12 5v14M5 12h14', dl: 'M12 4v12M7 11l5 5 5-5M5 20h14', pin: 'M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11zM12 12a2 2 0 100-4 2 2 0 000 4', clock: 'M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3 2', chev: 'M9 6l6 6-6 6', down: 'M6 9l6 6 6-6', search: 'M11 18a7 7 0 100-14 7 7 0 000 14zM21 21l-5-5', back: 'M15 6l-6 6 6 6', edit: 'M4 20h4L19 9l-4-4L4 16zM13 7l4 4', trash: 'M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13', out: 'M10 4H4v16h6M15 8l4 4-4 4M19 12H9',users: 'M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8' };
@@ -133,11 +133,14 @@ const VIEWS = {
   },
 
 // ---------- Pantalla:  gestion comicion ----------
-  async comision() {
+async comision() {
   const us = await api('/usuarios'); S.us = us;
   const R = { comision: ['Comisión', 'p-g'], docente: ['Docente', 'p-b'], estudiante: ['Estudiante', 'p-o'] };
-  return shell(`<div class="row"><div class="sp"><h1 style="font-size:30px">Usuarios</h1><div class="sub" style="margin:2px 0 0">${us.length} cuentas · ${us.filter(u => u.rol === 'comision').length} en la comisión</div></div><button class="btn sm" data-act="nuevoUsuario">${ico('plus', 16)} Agregar</button></div>
-  <div class="card" style="margin-top:14px">${us.map(u => `<div class="pl"><div class="th">${esc(u.nombre.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase())}</div><div class="sp"><b>${esc(u.nombre)}</b><br><small style="color:var(--mut)">${esc(u.correo)}</small></div><span class="pill ${(R[u.rol] || R.estudiante)[1]}">${(R[u.rol] || R.estudiante)[0]}</span><button data-act="editUsuario" data-v="${u.id}">${ico('edit', 16)}</button></div>`).join('')}</div>`);
+  const q = S.qu.toLowerCase(), lista = us.filter(u => (S.rolF === 'todos' || u.rol === S.rolF) && (u.nombre + ' ' + u.correo).toLowerCase().includes(q));
+  return shell(`<div class="row"><div class="sp"><h1 style="font-size:30px">Usuarios</h1><div class="sub" style="margin:2px 0 0">${lista.length} de ${us.length} cuentas · ${us.filter(u => u.rol === 'comision').length} en la comisión</div></div><button class="btn sm" data-act="nuevoUsuario">${ico('plus', 16)} Agregar</button></div>
+  <div class="row" style="position:relative;margin-top:14px"><span style="position:absolute;left:12px;color:var(--mut)">${ico('search', 16)}</span><input id="busqu" placeholder="Buscar por nombre o correo..." value="${esc(S.qu)}" style="padding-left:36px"></div>
+  <div class="chips"><button class="chip ${S.rolF === 'todos' ? 'on' : ''}" data-act="rolF" data-v="todos">Todos</button>${ROLES_UI.map(([k, l]) => `<button class="chip ${S.rolF === k ? 'on' : ''}" data-act="rolF" data-v="${k}">${l}</button>`).join('')}</div>
+  <div class="card">${lista.map(u => `<div class="pl"><div class="th">${esc(u.nombre.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase())}</div><div class="sp"><b>${esc(u.nombre)}</b><br><small style="color:var(--mut)">${esc(u.correo)}</small></div><span class="pill ${(R[u.rol] || R.estudiante)[1]}">${(R[u.rol] || R.estudiante)[0]}</span><button data-act="editUsuario" data-v="${u.id}">${ico('edit', 16)}</button></div>`).join('') || '<div class="pl sub">Sin resultados</div>'}</div>`);
 },
 
   // ---------- Pantalla 5: Planilla digital ----------
@@ -158,6 +161,7 @@ const optG = () => S.grupos.map(g => [g.id, g.nombre]);
 const ACT = {
   nuevoUsuario: () => modal('Agregar usuario', [{ n: 'nombre', l: 'Nombre completo' }, { n: 'correo', l: 'Correo (@clases.edu.sv)', t: 'email' }, { n: 'rol', l: 'Rol', t: 'select', v: 'comision', o: ROLES_UI }], async v => { await api('/usuarios', 'POST', v); render(); }),
   editUsuario: v => { const u = S.us.find(x => x.id == v); modal('Editar usuario', [{ n: 'nombre', l: 'Nombre', v: u.nombre }, { n: 'rol', l: 'Rol', t: 'select', v: u.rol, o: ROLES_UI }], async b => { await api('/usuarios/' + v, 'PUT', b); if (u.id == S.user.id) { S.user = null; S.tab = 'inicio'; } render(); }); },
+  rolF: v => { S.rolF = v; render(); },
   tab: v => { S.tab = v; render(); }, logout: () => confirm('¿Cerrar sesión?') && logout(), bell: () => toast(S.alertas ? S.alertas + ' sanciones activas' : 'Sin notificaciones'),
   login: () => entrar({ correo: $('#correo').value, password: $('#clave').value }),
   registrar: () => entrar({ nombre: $('#nombre').value, correo: $('#correo').value, password: $('#clave').value }, '/api/registro'),
@@ -191,4 +195,5 @@ const ACT = {
 document.addEventListener('click', e => { const el = e.target.closest('[data-act]'); if (!el || el.tagName === 'SELECT' || el.type === 'checkbox') return; const f = ACT[el.dataset.act]; if (f) tryDo(() => f(el.dataset.v, el)); });
 document.addEventListener('change', e => { const el = e.target; if (el.dataset.act && (el.tagName === 'SELECT' || el.type === 'checkbox')) ACT[el.dataset.act](el.value, el); });
 document.addEventListener('input', e => { if (e.target.id === 'busq') { S.q = e.target.value; clearTimeout(S.t); S.t = setTimeout(async () => { await render(); const i = $('#busq'); i.focus(); i.setSelectionRange(99, 99); }, 250); } });
+document.addEventListener('input', e => { if (e.target.id === 'busqu') { S.qu = e.target.value; clearTimeout(S.tu); S.tu = setTimeout(async () => { await render(); const i = $('#busqu'); i.focus(); i.setSelectionRange(99, 99); }, 250); } });
 VIEWS.planilla = VIEWS.planilla; render();
